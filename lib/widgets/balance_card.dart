@@ -9,52 +9,96 @@ class BalanceCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool isPositive = balance >= 0;
 
-    return Card(
-      elevation: 8,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          color: isPositive ? Colors.green : Colors.red,
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        gradient: LinearGradient(
+          colors: isPositive
+              ? [Colors.green.shade700, Colors.green.shade400]
+              : [Colors.red.shade700, Colors.red.shade400],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "Current Balance",
-              style: TextStyle(color: Colors.white70, fontSize: 18),
-            ),
-
-            const SizedBox(height: 10),
-
-            Text(
-              "Rs. ${balance.toStringAsFixed(2)}",
-              style: const TextStyle(
+        boxShadow: [
+          BoxShadow(
+            color: (isPositive ? Colors.green : Colors.red).withOpacity(0.30),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.account_balance_wallet_rounded,
                 color: Colors.white,
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
+                size: 28,
               ),
+
+              const SizedBox(width: 10),
+
+              const Text(
+                "Current Balance",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 25),
+
+          Text(
+            "Rs. ${balance.toStringAsFixed(2)}",
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 34,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1,
             ),
+          ),
 
-            const SizedBox(height: 12),
+          const SizedBox(height: 25),
 
-            Row(
-              children: const [
-                Icon(Icons.account_balance_wallet, color: Colors.white),
-                SizedBox(width: 8),
-                Text(
-                  "MyFinance",
-                  style: TextStyle(
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "MyFinance",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.20),
+                  borderRadius: BorderRadius.circular(30),
+                ),
+                child: Text(
+                  isPositive ? "Healthy Balance" : "Negative Balance",
+                  style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
