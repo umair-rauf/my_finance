@@ -110,7 +110,7 @@ class _HomeScreenState extends State<HomeScreen> {
     return "Good Evening";
   }
 
-  String _formatDate(DateTime date) {
+  String _formatFullDate(DateTime date) {
     const List<String> weekdays = [
       "Monday",
       "Tuesday",
@@ -138,6 +138,26 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return "${weekdays[date.weekday - 1]}, "
         "${date.day} ${months[date.month - 1]} ${date.year}";
+  }
+
+  String _formatTransactionDate(DateTime date) {
+    final DateTime now = DateTime.now();
+
+    final DateTime today = DateTime(now.year, now.month, now.day);
+
+    final DateTime transactionDay = DateTime(date.year, date.month, date.day);
+
+    final int difference = today.difference(transactionDay).inDays;
+
+    if (difference == 0) {
+      return "Today";
+    }
+
+    if (difference == 1) {
+      return "Yesterday";
+    }
+
+    return "${date.day}/${date.month}/${date.year}";
   }
 
   IconData _getExpenseIcon(String category) {
@@ -168,13 +188,71 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  IconData _getIncomeIcon(String source) {
+    switch (source.toLowerCase()) {
+      case "salary":
+        return Icons.work_rounded;
+
+      case "business":
+        return Icons.storefront_rounded;
+
+      case "freelancing":
+        return Icons.laptop_mac_rounded;
+
+      case "investment":
+        return Icons.trending_up_rounded;
+
+      case "gift":
+        return Icons.card_giftcard_rounded;
+
+      default:
+        return Icons.account_balance_wallet_rounded;
+    }
+  }
+
+  List<_TransactionItem> _getTransactions() {
+    final List<_TransactionItem> transactions = [];
+
+    for (final income in IncomeService.incomes) {
+      transactions.add(
+        _TransactionItem(
+          title: income.title,
+          amount: income.amount,
+          category: income.source,
+          description: income.description,
+          date: income.date,
+          type: _TransactionType.income,
+        ),
+      );
+    }
+
+    for (final expense in ExpenseService.expenses) {
+      transactions.add(
+        _TransactionItem(
+          title: expense.title,
+          amount: expense.amount,
+          category: expense.category,
+          description: expense.description,
+          date: expense.date,
+          type: _TransactionType.expense,
+        ),
+      );
+    }
+
+    transactions.sort((_TransactionItem first, _TransactionItem second) {
+      return second.date.compareTo(first.date);
+    });
+
+    return transactions;
+  }
+
   @override
   Widget build(BuildContext context) {
     final double income = IncomeService.totalIncome;
     final double expense = ExpenseService.totalExpense;
     final double balance = income - expense;
 
-    final expenses = ExpenseService.expenses.reversed.toList();
+    final List<_TransactionItem> transactions = _getTransactions();
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -227,7 +305,7 @@ class _HomeScreenState extends State<HomeScreen> {
               const SizedBox(height: 6),
 
               Text(
-                _formatDate(DateTime.now()),
+                _formatFullDate(DateTime.now()),
                 style: const TextStyle(color: Colors.white54, fontSize: 13),
               ),
 
@@ -317,7 +395,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   const Text(
-                    "Recent Expenses",
+                    "Recent Transactions",
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 19,
@@ -325,7 +403,7 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   Text(
-                    "${expenses.length} items",
+                    "${transactions.length} items",
                     style: const TextStyle(color: Colors.white54, fontSize: 13),
                   ),
                 ],
@@ -333,100 +411,38 @@ class _HomeScreenState extends State<HomeScreen> {
 
               const SizedBox(height: 14),
 
-              if (expenses.isEmpty)
-                const _EmptyExpenses()
+              if (transactions.isEmpty)
+                const _EmptyTransactions()
               else
-                ...expenses.take(5).map((item) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(18),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 48,
-                          height: 48,
-                          decoration: BoxDecoration(
-                            color: redColor.withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(15),
-                          ),
-                          child: Icon(
-                            _getExpenseIcon(item.category),
-                            color: redColor,
-                          ),
-                        ),
+                ...transactions.take(6).map((transaction) {
+                  final bool isIncome =
+                      transaction.type == _TransactionType.income;
 
-                        const SizedBox(width: 13),
+                  final Color transactionColor = isIncome
+                      ? greenColor
+                      : redColor;
 
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
+                  final IconData transactionIcon = isIncome
+                      ? _getIncomeIcon(transaction.category)
+                      : _getExpenseIcon(transaction.category);
 
-                              const SizedBox(height: 4),
-
-                              Text(
-                                item.category,
-                                style: const TextStyle(
-                                  color: Colors.white54,
-                                  fontSize: 13,
-                                ),
-                              ),
-
-                              if (item.description.isNotEmpty) ...[
-                                const SizedBox(height: 3),
-                                Text(
-                                  item.description,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Colors.white38,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-
-                        const SizedBox(width: 10),
-
-                        Text(
-                          "- Rs. ${item.amount.toStringAsFixed(2)}",
-                          style: const TextStyle(
-                            color: redColor,
-                            fontSize: 14,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
+                  return _TransactionCard(
+                    transaction: transaction,
+                    color: transactionColor,
+                    icon: transactionIcon,
+                    formattedDate: _formatTransactionDate(transaction.date),
                   );
                 }),
 
-              if (expenses.length > 5)
+              if (transactions.length > 6)
                 TextButton(
                   onPressed: () {
                     _showComingSoonMessage(
-                      "Full expense history coming soon 💳",
+                      "Full transaction history coming soon 💳",
                     );
                   },
                   child: const Text(
-                    "View all expenses",
+                    "View all transactions",
                     style: TextStyle(color: goldColor),
                   ),
                 ),
@@ -440,6 +456,26 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+enum _TransactionType { income, expense }
+
+class _TransactionItem {
+  final String title;
+  final double amount;
+  final String category;
+  final String description;
+  final DateTime date;
+  final _TransactionType type;
+
+  const _TransactionItem({
+    required this.title,
+    required this.amount,
+    required this.category,
+    required this.description,
+    required this.date,
+    required this.type,
+  });
 }
 
 class _BalanceCard extends StatelessWidget {
@@ -657,8 +693,124 @@ class _QuickActionButton extends StatelessWidget {
   }
 }
 
-class _EmptyExpenses extends StatelessWidget {
-  const _EmptyExpenses();
+class _TransactionCard extends StatelessWidget {
+  final _TransactionItem transaction;
+  final Color color;
+  final IconData icon;
+  final String formattedDate;
+
+  const _TransactionCard({
+    required this.transaction,
+    required this.color,
+    required this.icon,
+    required this.formattedDate,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final bool isIncome = transaction.type == _TransactionType.income;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: _HomeScreenState.cardColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: _HomeScreenState.borderColor),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(icon, color: color),
+          ),
+
+          const SizedBox(width: 13),
+
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  transaction.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        transaction.category,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+
+                    const SizedBox(width: 7),
+
+                    const Text("•", style: TextStyle(color: Colors.white30)),
+
+                    const SizedBox(width: 7),
+
+                    Text(
+                      formattedDate,
+                      style: const TextStyle(
+                        color: Colors.white38,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+
+                if (transaction.description.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    transaction.description,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  ),
+                ],
+              ],
+            ),
+          ),
+
+          const SizedBox(width: 10),
+
+          Text(
+            "${isIncome ? "+" : "-"} Rs. "
+            "${transaction.amount.toStringAsFixed(2)}",
+            style: TextStyle(
+              color: color,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmptyTransactions extends StatelessWidget {
+  const _EmptyTransactions();
 
   @override
   Widget build(BuildContext context) {
@@ -675,7 +827,7 @@ class _EmptyExpenses extends StatelessWidget {
           Icon(Icons.receipt_long_outlined, color: Colors.white38, size: 52),
           SizedBox(height: 13),
           Text(
-            "No expenses yet",
+            "No transactions yet",
             style: TextStyle(
               color: Colors.white70,
               fontSize: 16,
@@ -684,7 +836,7 @@ class _EmptyExpenses extends StatelessWidget {
           ),
           SizedBox(height: 6),
           Text(
-            "Add your first expense to begin tracking.",
+            "Add income or an expense to begin tracking.",
             textAlign: TextAlign.center,
             style: TextStyle(color: Colors.white38, fontSize: 13),
           ),
