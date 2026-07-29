@@ -1,11 +1,25 @@
-class Income {
+import 'package:hive_ce/hive.dart';
+
+part 'income.g.dart';
+
+@HiveType(typeId: 1)
+class Income extends HiveObject {
+  @HiveField(0)
   final String title;
+
+  @HiveField(1)
   final double amount;
+
+  @HiveField(2)
   final String source;
+
+  @HiveField(3)
   final String description;
+
+  @HiveField(4)
   final DateTime date;
 
-  const Income({
+  Income({
     required this.title,
     required this.amount,
     required this.source,

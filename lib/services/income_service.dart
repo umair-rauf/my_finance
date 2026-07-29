@@ -1,41 +1,69 @@
+import 'package:hive_ce_flutter/hive_flutter.dart';
+
 import '../models/income.dart';
 
 class IncomeService {
-  // Private list to store all incomes
-  static final List<Income> _incomes = [];
+  static const String boxName = 'incomes';
 
-  // Read-only access to the income list
-  static List<Income> get incomes => List.unmodifiable(_incomes);
+  static Box<Income> get _box => Hive.box<Income>(boxName);
 
-  // Add a new income
-  static void addIncome(Income income) {
-    _incomes.add(income);
+  // Return all incomes, newest first.
+  static List<Income> get incomes {
+    final List<Income> items = _box.values.toList();
+
+    items.sort(
+      (Income first, Income second) => second.date.compareTo(first.date),
+    );
+
+    return items;
   }
 
-  // Remove a single income
-  static void removeIncome(Income income) {
-    _incomes.remove(income);
+  // Add a new income.
+  static Future<void> addIncome(Income income) async {
+    await _box.add(income);
   }
 
-  // Remove all incomes
-  static void clearIncomes() {
-    _incomes.clear();
+  // Update an existing income.
+  static Future<void> updateIncome(
+    Income oldIncome,
+    Income updatedIncome,
+  ) async {
+    final dynamic key = oldIncome.key;
+
+    if (key == null) {
+      return;
+    }
+
+    await _box.put(key, updatedIncome);
   }
 
-  // Calculate total income
+  // Remove one income safely using its Hive key.
+  static Future<void> removeIncome(Income income) async {
+    final dynamic key = income.key;
+
+    if (key == null) {
+      return;
+    }
+
+    await _box.delete(key);
+  }
+
+  // Remove all incomes.
+  static Future<void> clearIncomes() async {
+    await _box.clear();
+  }
+
+  // Calculate total income.
   static double get totalIncome {
-    return _incomes.fold<double>(
+    return _box.values.fold<double>(
       0.0,
-      (double sum, Income income) => sum + income.amount,
+      (double total, Income income) => total + income.amount,
     );
   }
 
-  // Number of income records
-  static int get incomeCount => _incomes.length;
+  static int get incomeCount => _box.length;
 
-  // Check if there are no income records
-  static bool get isEmpty => _incomes.isEmpty;
+  static bool get isEmpty => _box.isEmpty;
 
-  // Check if there are income records
-  static bool get isNotEmpty => _incomes.isNotEmpty;
+  static bool get isNotEmpty => _box.isNotEmpty;
 }

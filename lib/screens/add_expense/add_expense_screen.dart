@@ -17,6 +17,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
   String selectedCategory = "Food";
   DateTime selectedDate = DateTime.now();
+  bool isSaving = false;
 
   final List<String> categories = [
     "Food",
@@ -53,12 +54,16 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
   }
 
   void showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void saveExpense() {
+  Future<void> saveExpense() async {
+    if (isSaving) {
+      return;
+    }
+
     final String title = titleController.text.trim();
     final String amountText = amountController.text.trim();
     final String description = descriptionController.text.trim();
@@ -80,17 +85,37 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
       return;
     }
 
-    final Expense expense = Expense(
-      title: title,
-      amount: amount,
-      category: selectedCategory,
-      description: description,
-      date: selectedDate,
-    );
+    setState(() {
+      isSaving = true;
+    });
 
-    ExpenseService.addExpense(expense);
+    try {
+      final Expense expense = Expense(
+        title: title,
+        amount: amount,
+        category: selectedCategory,
+        description: description,
+        date: selectedDate,
+      );
 
-    Navigator.pop(context, true);
+      await ExpenseService.addExpense(expense);
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isSaving = false;
+      });
+
+      showMessage("Unable to save expense. Please try again.");
+    }
   }
 
   @override
@@ -112,6 +137,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
               TextField(
                 controller: titleController,
+                enabled: !isSaving,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   hintText: "Enter expense title",
@@ -130,6 +156,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
               TextField(
                 controller: amountController,
+                enabled: !isSaving,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -159,15 +186,17 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
                     child: Text(category),
                   );
                 }).toList(),
-                onChanged: (String? value) {
-                  if (value == null) {
-                    return;
-                  }
+                onChanged: isSaving
+                    ? null
+                    : (String? value) {
+                        if (value == null) {
+                          return;
+                        }
 
-                  setState(() {
-                    selectedCategory = value;
-                  });
-                },
+                        setState(() {
+                          selectedCategory = value;
+                        });
+                      },
               ),
 
               const SizedBox(height: 20),
@@ -179,7 +208,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               SizedBox(
                 height: 52,
                 child: OutlinedButton.icon(
-                  onPressed: pickDate,
+                  onPressed: isSaving ? null : pickDate,
                   icon: const Icon(Icons.calendar_month),
                   label: Text(
                     "${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
@@ -198,6 +227,7 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
               TextField(
                 controller: descriptionController,
+                enabled: !isSaving,
                 maxLines: 3,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
@@ -211,11 +241,20 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
               SizedBox(
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: saveExpense,
-                  child: const Text(
-                    "SAVE EXPENSE",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  onPressed: isSaving ? null : saveExpense,
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        )
+                      : const Text(
+                          "SAVE EXPENSE",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],

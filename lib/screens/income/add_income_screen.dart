@@ -16,6 +16,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
   final TextEditingController descriptionController = TextEditingController();
 
   String selectedSource = "Salary";
+  bool isSaving = false;
 
   final List<String> sources = [
     "Salary",
@@ -40,7 +41,11 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
       ..showSnackBar(SnackBar(content: Text(message)));
   }
 
-  void saveIncome() {
+  Future<void> saveIncome() async {
+    if (isSaving) {
+      return;
+    }
+
     final String title = titleController.text.trim();
     final String amountText = amountController.text.trim();
     final String description = descriptionController.text.trim();
@@ -62,17 +67,37 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
       return;
     }
 
-    final Income income = Income(
-      title: title,
-      amount: amount,
-      source: selectedSource,
-      description: description,
-      date: DateTime.now(),
-    );
+    setState(() {
+      isSaving = true;
+    });
 
-    IncomeService.addIncome(income);
+    try {
+      final Income income = Income(
+        title: title,
+        amount: amount,
+        source: selectedSource,
+        description: description,
+        date: DateTime.now(),
+      );
 
-    Navigator.pop(context, true);
+      await IncomeService.addIncome(income);
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.pop(context, true);
+    } catch (error) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        isSaving = false;
+      });
+
+      showMessage("Unable to save income. Please try again.");
+    }
   }
 
   @override
@@ -94,6 +119,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
 
               TextField(
                 controller: titleController,
+                enabled: !isSaving,
                 textInputAction: TextInputAction.next,
                 decoration: const InputDecoration(
                   hintText: "Enter income title",
@@ -112,6 +138,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
 
               TextField(
                 controller: amountController,
+                enabled: !isSaving,
                 keyboardType: const TextInputType.numberWithOptions(
                   decimal: true,
                 ),
@@ -141,15 +168,17 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
                     child: Text(source),
                   );
                 }).toList(),
-                onChanged: (String? value) {
-                  if (value == null) {
-                    return;
-                  }
+                onChanged: isSaving
+                    ? null
+                    : (String? value) {
+                        if (value == null) {
+                          return;
+                        }
 
-                  setState(() {
-                    selectedSource = value;
-                  });
-                },
+                        setState(() {
+                          selectedSource = value;
+                        });
+                      },
               ),
 
               const SizedBox(height: 20),
@@ -163,6 +192,7 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
 
               TextField(
                 controller: descriptionController,
+                enabled: !isSaving,
                 maxLines: 3,
                 textInputAction: TextInputAction.done,
                 decoration: const InputDecoration(
@@ -176,11 +206,20 @@ class _AddIncomeScreenState extends State<AddIncomeScreen> {
               SizedBox(
                 height: 55,
                 child: ElevatedButton(
-                  onPressed: saveIncome,
-                  child: const Text(
-                    "SAVE INCOME",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
+                  onPressed: isSaving ? null : saveIncome,
+                  child: isSaving
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(strokeWidth: 2.5),
+                        )
+                      : const Text(
+                          "SAVE INCOME",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                 ),
               ),
             ],
